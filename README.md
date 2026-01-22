@@ -2,7 +2,7 @@
 
 A simple REST API for managing categories with in-memory storage built with Go.
 
-![CI Tests](https://github.com/YOUR_USERNAME/YOUR_REPO/workflows/CI%20Tests/badge.svg)
+![CI Tests](https://github.com/habibiefaried/codewithumam-tugas1/workflows/CI%20Tests/badge.svg)
 
 ## Features
 
@@ -12,6 +12,11 @@ A simple REST API for managing categories with in-memory storage built with Go.
 - ✅ RESTful API design
 - ✅ JSON request/response
 - ✅ Automated CI tests
+- ✅ Deployed on Railway
+
+## Live API
+
+🚀 **Production URL:** https://codewithumam-tugas1-production.up.railway.app/
 
 ## Getting Started
 
@@ -23,8 +28,8 @@ A simple REST API for managing categories with in-memory storage built with Go.
 
 1. Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
-cd YOUR_REPO
+git clone https://github.com/habibiefaried/codewithumam-tugas1
+cd codewithumam-tugas1
 ```
 
 2. Run the server
@@ -43,13 +48,17 @@ go build -o api-server main.go
 
 ## API Endpoints
 
-### Base URL
-```
-http://localhost:8080
-```
+### Base URLs
+
+**Production:** `https://codewithumam-tugas1-production.up.railway.app`  
+**Local Development:** `http://localhost:8080`
 
 ### Health Check
 ```bash
+# Production
+curl https://codewithumam-tugas1-production.up.railway.app/health
+
+# Local
 curl http://localhost:8080/health
 ```
 
@@ -60,6 +69,10 @@ OK
 
 ### Version
 ```bash
+# Production
+curl https://codewithumam-tugas1-production.up.railway.app/version
+
+# Local
 curl http://localhost:8080/version
 ```
 
@@ -78,6 +91,10 @@ Commit: unknown
 
 **Request:**
 ```bash
+# Production
+curl https://codewithumam-tugas1-production.up.railway.app/categories
+
+# Local
 curl http://localhost:8080/categories
 ```
 
@@ -105,6 +122,10 @@ curl http://localhost:8080/categories
 
 **Request:**
 ```bash
+# Production
+curl https://codewithumam-tugas1-production.up.railway.app/categories/1
+
+# Local
 curl http://localhost:8080/categories/1
 ```
 
@@ -130,6 +151,15 @@ Category not found
 
 **Request:**
 ```bash
+# Production
+curl -X POST https://codewithumam-tugas1-production.up.railway.app/categories \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Electronics",
+    "description": "Electronic devices and gadgets"
+  }'
+
+# Local
 curl -X POST http://localhost:8080/categories \
   -H "Content-Type: application/json" \
   -d '{
@@ -160,6 +190,15 @@ Name is required
 
 **Request:**
 ```bash
+# Production
+curl -X PUT https://codewithumam-tugas1-production.up.railway.app/categories/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Electronics and Tech",
+    "description": "Electronic devices, gadgets, and technology products"
+  }'
+
+# Local
 curl -X PUT http://localhost:8080/categories/1 \
   -H "Content-Type: application/json" \
   -d '{
@@ -190,6 +229,10 @@ Category not found
 
 **Request:**
 ```bash
+# Production
+curl -X DELETE https://codewithumam-tugas1-production.up.railway.app/categories/1
+
+# Local
 curl -X DELETE http://localhost:8080/categories/1
 ```
 
@@ -207,35 +250,35 @@ Category not found
 
 ## Quick Testing Examples
 
-### Complete Workflow
+### Complete Workflow (Production)
 
 ```bash
 # 1. Create a category
-curl -X POST http://localhost:8080/categories \
+curl -X POST https://codewithumam-tugas1-production.up.railway.app/categories \
   -H "Content-Type: application/json" \
   -d '{"name":"Electronics","description":"Electronic devices"}'
 
 # 2. Create another category
-curl -X POST http://localhost:8080/categories \
+curl -X POST https://codewithumam-tugas1-production.up.railway.app/categories \
   -H "Content-Type: application/json" \
   -d '{"name":"Books","description":"Physical and digital books"}'
 
 # 3. List all categories
-curl http://localhost:8080/categories
+curl https://codewithumam-tugas1-production.up.railway.app/categories
 
 # 4. Get specific category
-curl http://localhost:8080/categories/1
+curl https://codewithumam-tugas1-production.up.railway.app/categories/1
 
 # 5. Update category
-curl -X PUT http://localhost:8080/categories/1 \
+curl -X PUT https://codewithumam-tugas1-production.up.railway.app/categories/1 \
   -H "Content-Type: application/json" \
   -d '{"name":"Electronics and Tech","description":"Updated description"}'
 
 # 6. Delete category
-curl -X DELETE http://localhost:8080/categories/2
+curl -X DELETE https://codewithumam-tugas1-production.up.railway.app/categories/2
 
 # 7. Verify deletion
-curl http://localhost:8080/categories
+curl https://codewithumam-tugas1-production.up.railway.app/categories
 ```
 
 ### Using jq for Pretty Output
@@ -243,7 +286,7 @@ curl http://localhost:8080/categories
 If you have `jq` installed, you can format the JSON output:
 
 ```bash
-curl http://localhost:8080/categories | jq
+curl https://codewithumam-tugas1-production.up.railway.app/categories | jq
 ```
 
 ---
@@ -321,6 +364,7 @@ chmod +x test_api.sh
 - **Concurrency:** Thread-safe using `sync.RWMutex`
 - **ID Generation:** Auto-incrementing integer
 - **Time Complexity:** O(1) for all operations
+- **Deployment:** Railway (https://railway.app)
 
 ---
 
