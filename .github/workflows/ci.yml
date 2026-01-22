@@ -124,12 +124,18 @@ jobs:
           
           # Update category
           echo -e "\n\n9. Update category ID: 1"
-          RESPONSE=$(curl -s -X PUT http://localhost:8080/categories/1 \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT http://localhost:8080/categories/1 \
             -H "Content-Type: application/json" \
-            -d '{"name":"Electronics & Tech","description":"Updated description"}')
-          echo $RESPONSE
-          if ! echo $RESPONSE | grep -q "Electronics & Tech"; then
-            echo "Update failed"
+            -d '{"name":"Electronics and Tech","description":"Updated description"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Expected 200, got: $HTTP_CODE"
+            exit 1
+          fi
+          if ! echo $BODY | grep -q "Electronics and Tech"; then
+            echo "Update failed - name not updated correctly"
             exit 1
           fi
           
