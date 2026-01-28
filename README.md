@@ -92,20 +92,6 @@ curl http://localhost:8080/health
 OK
 ```
 
-### Version
-```bash
-# Production
-curl https://codewithumam-tugas-production.up.railway.app/version
-
-# Local
-curl http://localhost:8080/version
-```
-
-**Response:**
-```
-Commit: unknown
-```
-
 ---
 
 ## Category Endpoints

@@ -130,7 +130,13 @@ func (p *Products) Delete(w http.ResponseWriter, r *http.Request) {
 
 	err = database.DeleteProduct(p.db, p.tableName, id)
 	if err != nil {
-		http.Error(w, "Product not found", http.StatusNotFound)
+		// Check if it's a "not found" error or another database error
+		if err.Error() == "product not found" {
+			http.Error(w, "Product not found", http.StatusNotFound)
+		} else {
+			// Other database error (constraint violation, etc)
+			http.Error(w, "Failed to delete product", http.StatusConflict)
+		}
 		return
 	}
 

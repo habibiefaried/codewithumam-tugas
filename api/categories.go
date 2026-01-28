@@ -130,7 +130,13 @@ func (c *Categories) Delete(w http.ResponseWriter, r *http.Request) {
 
 	err = database.Delete(c.db, c.tableName, id)
 	if err != nil {
-		http.Error(w, "Category not found", http.StatusNotFound)
+		// Check if it's a "not found" error or a foreign key constraint error
+		if err.Error() == "category not found" {
+			http.Error(w, "Category not found", http.StatusNotFound)
+		} else {
+			// Foreign key constraint or other database error
+			http.Error(w, "Cannot delete category that has products", http.StatusConflict)
+		}
 		return
 	}
 

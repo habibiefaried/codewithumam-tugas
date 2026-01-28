@@ -241,6 +241,21 @@ jobs:
             exit 1
           fi
 
+          # Test foreign key constraint - try to delete category that has products
+          echo -e "\n\n15b. Test foreign key constraint: Delete category with products (should fail with 409)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE http://localhost:8080/categories/1)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" != "409" ]; then
+            echo "Expected 409 Conflict, got: $HTTP_CODE"
+            exit 1
+          fi
+          if ! echo $BODY | grep -q "Cannot delete category"; then
+            echo "Expected error message about constraint violation"
+            exit 1
+          fi
+
           # Test validation - empty name
           echo -e "\n\n16. Test validation: empty name (should fail)"
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/categories \
