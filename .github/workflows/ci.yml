@@ -279,6 +279,139 @@ jobs:
             exit 1
           fi
 
+          # Additional CRUD tests for Categories
+          echo -e "\n\n20. Create additional category: Home & Garden"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/categories \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Home & Garden","description":"Home and garden products"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "Expected 201, got: $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Create another category
+          echo -e "\n\n21. Create category: Sports & Outdoors"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/categories \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Sports & Outdoors","description":"Sports and outdoor equipment"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "Expected 201, got: $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Get all remaining categories (should have 4: Electronics, Clothing, Home & Garden, Sports)
+          echo -e "\n\n22. Verify all categories exist (expect 4)"
+          RESPONSE=$(curl -s http://localhost:8080/categories)
+          echo $RESPONSE
+          COUNT=$(echo $RESPONSE | grep -o '"id"' | wc -l)
+          if [ "$COUNT" != "4" ]; then
+            echo "Expected 4 categories, got: $COUNT"
+            exit 1
+          fi
+          
+          # Update category 3 (Clothing)
+          echo -e "\n\n23. Update category ID: 3 (Clothing)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT http://localhost:8080/categories/3 \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Fashion & Apparel","description":"Updated clothing and fashion items"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Expected 200, got: $HTTP_CODE"
+            exit 1
+          fi
+          if ! echo $BODY | grep -q "Fashion & Apparel"; then
+            echo "Update failed - name not updated correctly"
+            exit 1
+          fi
+
+          # Additional CRUD tests for Products
+          echo -e "\n\n24. Create additional product: Laptop"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/products \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Laptop","price":1299,"stock":8,"category_id":1}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "Expected 201, got: $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Create another product in Sports category
+          echo -e "\n\n25. Create product: Running Shoes in Sports category"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/products \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Running Shoes","price":89,"stock":25,"category_id":5}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "Expected 201, got: $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Get all products (should have at least 3 now: Phone, Laptop, Running Shoes)
+          echo -e "\n\n26. Get all products (verify at least 3 exist)"
+          RESPONSE=$(curl -s http://localhost:8080/products)
+          echo $RESPONSE
+          COUNT=$(echo $RESPONSE | grep -o '"id"' | wc -l)
+          if [ "$COUNT" -lt 3 ]; then
+            echo "Expected at least 3 products, got: $COUNT"
+            exit 1
+          fi
+          
+          # Update product 3 (the Laptop)
+          echo -e "\n\n27. Update product ID: 3 - increase price"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT http://localhost:8080/products/3 \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Laptop Pro","price":1599,"stock":5,"category_id":1}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Expected 200 for product update, got: $HTTP_CODE"
+            exit 1
+          fi
+          if ! echo $BODY | grep -q "Laptop Pro"; then
+            echo "Update failed - name not updated correctly"
+            exit 1
+          fi
+          
+          # Get updated product and verify price
+          echo -e "\n\n28. Verify product 3 update - check price is 1599"
+          RESPONSE=$(curl -s http://localhost:8080/products/3)
+          echo $RESPONSE
+          if ! echo $RESPONSE | grep -q '"price":1599'; then
+            echo "Price not updated correctly"
+            exit 1
+          fi
+          
+          # Delete product 4 (Running Shoes)
+          echo -e "\n\n29. Delete product ID: 4"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE http://localhost:8080/products/4)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" != "204" ]; then
+            echo "Expected 204 for product delete, got: $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Verify deletion - try to get deleted product
+          echo -e "\n\n30. Verify product 4 is deleted (should get 404)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" http://localhost:8080/products/4)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" != "404" ]; then
+            echo "Expected 404 for deleted product, got: $HTTP_CODE"
+            exit 1
+          fi
+
           echo -e "\n\n========================================="
           echo "✅ All tests passed!"
           echo "========================================="
