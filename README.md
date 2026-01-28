@@ -1,28 +1,33 @@
-# Category CRUD API
+# Category & Product CRUD API
 
-A simple REST API for managing categories with in-memory storage built with Go.
+A REST API for managing categories and products with PostgreSQL database backend built with Go.
 
 ![CI Tests](https://github.com/habibiefaried/codewithumam-tugas1/workflows/CI%20Tests/badge.svg)
 
 ## Features
 
-- ✅ Full CRUD operations for categories
-- ✅ In-memory storage (no database required)
-- ✅ Thread-safe with RWMutex
-- ✅ RESTful API design
+- ✅ Full CRUD operations for categories and products
+- ✅ Product-Category relationship with foreign keys
+- ✅ PostgreSQL database backend
+- ✅ Configuration from `secrets.yml` or environment variables
+- ✅ Database migrations with `CREATE IF NOT EXISTS`
+- ✅ Indexes on id and name columns for performance
+- ✅ Comprehensive unit tests for database queries
+- ✅ RESTful API design with proper separation of concerns
 - ✅ JSON request/response
-- ✅ Automated CI tests
+- ✅ Automated CI/CD tests (30+ test scenarios)
 - ✅ Deployed on Railway
 
 ## Live API
 
-🚀 **Production URL:** https://codewithumam-tugas1-production.up.railway.app/
+🚀 **Production URL:** https://codewithumam-tugas-production.up.railway.app/
 
 ## Getting Started
 
 ### Prerequisites
 
 - Go 1.22 or higher
+- PostgreSQL 12 or higher
 
 ### Installation
 
@@ -32,12 +37,32 @@ git clone https://github.com/habibiefaried/codewithumam-tugas1
 cd codewithumam-tugas1
 ```
 
-2. Run the server
+2. Download dependencies
+```bash
+go mod download
+```
+
+3. Setup configuration - Copy the example file and update with your database credentials:
+```bash
+cp secrets.yml.example secrets.yml
+```
+
+Edit `secrets.yml` with your database details:
+```yaml
+db_url: localhost
+db_port: 5432
+db_name: your_database
+db_user: your_user
+db_password: your_password
+port: 8080
+```
+
+4. Run the server
 ```bash
 go run main.go
 ```
 
-The server will start on port 8080 (or the port specified in `PORT` environment variable).
+The server will automatically create the `category` and `product` tables if they don't exist.
 
 ### Build
 
@@ -56,7 +81,7 @@ go build -o api-server main.go
 ### Health Check
 ```bash
 # Production
-curl https://codewithumam-tugas1-production.up.railway.app/health
+curl https://codewithumam-tugas-production.up.railway.app/health
 
 # Local
 curl http://localhost:8080/health
@@ -70,7 +95,7 @@ OK
 ### Version
 ```bash
 # Production
-curl https://codewithumam-tugas1-production.up.railway.app/version
+curl https://codewithumam-tugas-production.up.railway.app/version
 
 # Local
 curl http://localhost:8080/version
@@ -92,7 +117,7 @@ Commit: unknown
 **Request:**
 ```bash
 # Production
-curl https://codewithumam-tugas1-production.up.railway.app/categories
+curl https://codewithumam-tugas-production.up.railway.app/categories
 
 # Local
 curl http://localhost:8080/categories
@@ -123,7 +148,7 @@ curl http://localhost:8080/categories
 **Request:**
 ```bash
 # Production
-curl https://codewithumam-tugas1-production.up.railway.app/categories/1
+curl https://codewithumam-tugas-production.up.railway.app/categories/1
 
 # Local
 curl http://localhost:8080/categories/1
@@ -152,7 +177,7 @@ Category not found
 **Request:**
 ```bash
 # Production
-curl -X POST https://codewithumam-tugas1-production.up.railway.app/categories \
+curl -X POST https://codewithumam-tugas-production.up.railway.app/categories \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Electronics",
@@ -191,7 +216,7 @@ Name is required
 **Request:**
 ```bash
 # Production
-curl -X PUT https://codewithumam-tugas1-production.up.railway.app/categories/1 \
+curl -X PUT https://codewithumam-tugas-production.up.railway.app/categories/1 \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Electronics and Tech",
@@ -230,7 +255,7 @@ Category not found
 **Request:**
 ```bash
 # Production
-curl -X DELETE https://codewithumam-tugas1-production.up.railway.app/categories/1
+curl -X DELETE https://codewithumam-tugas-production.up.railway.app/categories/1
 
 # Local
 curl -X DELETE http://localhost:8080/categories/1
@@ -248,37 +273,253 @@ Category not found
 
 ---
 
+## Product Endpoints
+
+### Products: Get All
+
+**Endpoint:** `GET /products`
+
+**Request:**
+```bash
+# Production
+curl https://codewithumam-tugas-production.up.railway.app/products
+
+# Local
+curl http://localhost:8080/products
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Laptop",
+    "price": 1299,
+    "stock": 8,
+    "category_id": 1,
+    "category_name": "Electronics",
+    "category_description": "Electronic devices and gadgets"
+  },
+  {
+    "id": 2,
+    "name": "Phone",
+    "price": 299,
+    "stock": 10,
+    "category_id": 1,
+    "category_name": "Electronics",
+    "category_description": "Electronic devices and gadgets"
+  }
+]
+```
+
+---
+
+### Products: Get by ID
+
+**Endpoint:** `GET /products/{id}`
+
+**Request:**
+```bash
+# Production
+curl https://codewithumam-tugas-production.up.railway.app/products/1
+
+# Local
+curl http://localhost:8080/products/1
+```
+
+**Response (Success - 200):**
+```json
+{
+  "id": 1,
+  "name": "Laptop",
+  "price": 1299,
+  "stock": 8,
+  "category_id": 1,
+  "category_name": "Electronics",
+  "category_description": "Electronic devices and gadgets"
+}
+```
+
+**Response (Not Found - 404):**
+```
+Product not found
+```
+
+---
+
+### Products: Create
+
+**Endpoint:** `POST /products`
+
+**Request:**
+```bash
+# Production
+curl -X POST https://codewithumam-tugas-production.up.railway.app/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Laptop",
+    "price": 1299,
+    "stock": 8,
+    "category_id": 1
+  }'
+
+# Local
+curl -X POST http://localhost:8080/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Laptop",
+    "price": 1299,
+    "stock": 8,
+    "category_id": 1
+  }'
+```
+
+**Response (Success - 201):**
+```json
+{
+  "id": 1,
+  "name": "Laptop",
+  "price": 1299,
+  "stock": 8,
+  "category_id": 1,
+  "category_name": "Electronics",
+  "category_description": "Electronic devices and gadgets"
+}
+```
+
+**Response (Bad Request - 400):**
+```
+Name is required
+```
+
+---
+
+### Products: Update
+
+**Endpoint:** `PUT /products/{id}`
+
+**Request:**
+```bash
+# Production
+curl -X PUT https://codewithumam-tugas-production.up.railway.app/products/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Laptop Pro",
+    "price": 1599,
+    "stock": 5,
+    "category_id": 1
+  }'
+
+# Local
+curl -X PUT http://localhost:8080/products/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Laptop Pro",
+    "price": 1599,
+    "stock": 5,
+    "category_id": 1
+  }'
+```
+
+**Response (Success - 200):**
+```json
+{
+  "id": 1,
+  "name": "Laptop Pro",
+  "price": 1599,
+  "stock": 5,
+  "category_id": 1,
+  "category_name": "Electronics",
+  "category_description": "Electronic devices and gadgets"
+}
+```
+
+**Response (Not Found - 404):**
+```
+Product not found
+```
+
+---
+
+### Products: Delete
+
+**Endpoint:** `DELETE /products/{id}`
+
+**Request:**
+```bash
+# Production
+curl -X DELETE https://codewithumam-tugas-production.up.railway.app/products/1
+
+# Local
+curl -X DELETE http://localhost:8080/products/1
+```
+
+**Response (Success - 204):**
+```
+(No content)
+```
+
+**Response (Not Found - 404):**
+```
+Product not found
+```
+
+---
+
 ## Quick Testing Examples
 
-### Complete Workflow (Production)
+### Complete Category Workflow (Production)
 
 ```bash
-# 1. Create a category
-curl -X POST https://codewithumam-tugas1-production.up.railway.app/categories \
+# 1. Create categories
+curl -X POST https://codewithumam-tugas-production.up.railway.app/categories \
   -H "Content-Type: application/json" \
   -d '{"name":"Electronics","description":"Electronic devices"}'
 
-# 2. Create another category
-curl -X POST https://codewithumam-tugas1-production.up.railway.app/categories \
+curl -X POST https://codewithumam-tugas-production.up.railway.app/categories \
   -H "Content-Type: application/json" \
   -d '{"name":"Books","description":"Physical and digital books"}'
 
-# 3. List all categories
-curl https://codewithumam-tugas1-production.up.railway.app/categories
+# 2. List all categories
+curl https://codewithumam-tugas-production.up.railway.app/categories
 
-# 4. Get specific category
-curl https://codewithumam-tugas1-production.up.railway.app/categories/1
+# 3. Get specific category
+curl https://codewithumam-tugas-production.up.railway.app/categories/1
 
-# 5. Update category
-curl -X PUT https://codewithumam-tugas1-production.up.railway.app/categories/1 \
+# 4. Update category
+curl -X PUT https://codewithumam-tugas-production.up.railway.app/categories/1 \
   -H "Content-Type: application/json" \
   -d '{"name":"Electronics and Tech","description":"Updated description"}'
 
-# 6. Delete category
-curl -X DELETE https://codewithumam-tugas1-production.up.railway.app/categories/2
+# 5. Delete category
+curl -X DELETE https://codewithumam-tugas-production.up.railway.app/categories/2
+```
 
-# 7. Verify deletion
-curl https://codewithumam-tugas1-production.up.railway.app/categories
+### Complete Product Workflow (Production)
+
+```bash
+# 1. Create products (category_id must exist)
+curl -X POST https://codewithumam-tugas-production.up.railway.app/products \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Laptop","price":1299,"stock":8,"category_id":1}'
+
+curl -X POST https://codewithumam-tugas-production.up.railway.app/products \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Phone","price":299,"stock":10,"category_id":1}'
+
+# 2. List all products (includes category information)
+curl https://codewithumam-tugas-production.up.railway.app/products
+
+# 3. Get specific product
+curl https://codewithumam-tugas-production.up.railway.app/products/1
+
+# 4. Update product
+curl -X PUT https://codewithumam-tugas-production.up.railway.app/products/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Laptop Pro","price":1599,"stock":5,"category_id":1}'
+
+# 5. Delete product
+curl -X DELETE https://codewithumam-tugas-production.up.railway.app/products/2
 ```
 
 ### Using jq for Pretty Output
@@ -286,7 +527,7 @@ curl https://codewithumam-tugas1-production.up.railway.app/categories
 If you have `jq` installed, you can format the JSON output:
 
 ```bash
-curl https://codewithumam-tugas1-production.up.railway.app/categories | jq
+curl https://codewithumam-tugas-production.up.railway.app/categories | jq
 ```
 
 ---
@@ -314,19 +555,65 @@ The API returns appropriate HTTP status codes:
 | name        | string | Yes      | Category name         |
 | description | string | No       | Category description  |
 
+### Product
+
+| Field                   | Type   | Required | Description                      |
+|-------------------------|--------|----------|-------------------------------------|
+| id                      | int    | Auto     | Unique identifier                  |
+| name                    | string | Yes      | Product name                       |
+| price                   | int    | Yes      | Product price (in cents)           |
+| stock                   | int    | Yes      | Available stock quantity           |
+| category_id             | int    | Yes      | Foreign key to category table      |
+| category_name           | string | Read     | Category name (from join)          |
+| category_description    | string | Read     | Category description (from join)   |
+
 ---
 
 ## Configuration
 
-### Environment Variables
+### Environment Variables & secrets.yml
 
-- `PORT` - Server port (default: 8080)
-- `GitCommit` - Build-time git commit hash
+The application supports two methods of configuration in this priority order:
 
-Example:
+1. **`secrets.yml`** (local file, for development) - Loaded first if it exists
+2. **Environment Variables** - Used as fallback if not in `secrets.yml`
+3. **Default Values** - Used if neither file nor environment variable is set
+
+#### Supported Configuration Keys
+
+| Key | YAML Key | Env Var | Default | Description |
+|-----|----------|---------|---------|-------------|
+| Database URL | `db_url` | `DB_URL` | `localhost` | PostgreSQL server hostname/IP |
+| Database Port | `db_port` | `DB_PORT` | `5432` | PostgreSQL server port |
+| Database Name | `db_name` | `DB_NAME` | `postgres` | Database name |
+| Database User | `db_user` | `DB_USER` | `postgres` | Database user |
+| Database Password | `db_password` | `DB_PASSWORD` | `postgres` | Database password |
+| Server Port | `port` | `PORT` | `8080` | HTTP server port |
+
+#### Example: Using Environment Variables
+
 ```bash
-PORT=3000 go run main.go
+DB_URL=db.example.com \
+DB_PORT=5432 \
+DB_NAME=mydb \
+DB_USER=admin \
+DB_PASSWORD=secret123 \
+PORT=8080 \
+go run main.go
 ```
+
+#### Example: Using secrets.yml
+
+```yaml
+db_url: db.example.com
+db_port: 5432
+db_name: mydb
+db_user: admin
+db_password: secret123
+port: 8080
+```
+
+**Note:** `secrets.yml` is in `.gitignore` to prevent committing sensitive data. Always use `secrets.yml.example` as a template.
 
 ---
 
@@ -334,36 +621,85 @@ PORT=3000 go run main.go
 
 ### Running Tests
 
-The project includes automated tests via GitHub Actions. To run manually:
+Run unit tests for the database queries:
 
 ```bash
-# Start the server
-go run main.go
+# First, ensure secrets.yml exists with database credentials
+# (copy from secrets.yml.example if it doesn't exist)
+cp secrets.yml.example secrets.yml
+# Then edit secrets.yml with your actual database credentials
 
-# In another terminal, run the test script
-chmod +x test_api.sh
-./test_api.sh
+# Run tests for database package
+go test ./database -v
+
+# Run all tests
+go test ./... -v
+
+# Run tests with coverage
+go test ./... -v -cover
 ```
+
+**Important:** Tests require `secrets.yml` to exist in the project root directory with valid database credentials. If `secrets.yml` is missing, tests will fail with an error message.
+
+**Note:** Tests use separate `category_test` and `product_test` tables that are automatically created and cleaned up.
 
 ### Project Structure
 
 ```
 .
-├── .github/
-│   └── workflows/
-│       └── ci.yml          # GitHub Actions CI configuration
-├── main.go                 # Main application code
+├── main.go                 # Application entry point
+├── config/
+│   └── config.go          # Configuration management (secrets.yml + env vars)
+├── api/
+│   ├── categories.go      # HTTP route handlers for category endpoints
+│   └── products.go        # HTTP route handlers for product endpoints
+├── database/
+│   ├── categories.go      # Category data model
+│   ├── product.go         # Product data model
+│   ├── migrations.go      # Database schema creation (tables + indexes)
+│   ├── queries.go         # CRUD operations for categories and products
+│   ├── categories_test.go # Category unit tests
+│   └── product_test.go    # Product unit tests
+├── .github/workflows/
+│   └── ci.yml             # GitHub Actions CI/CD pipeline (30+ tests)
+├── secrets.yml.example    # Configuration template
 └── README.md              # This file
 ```
+
+#### Folder Responsibilities
+
+**`api/`** - HTTP layer
+- Handles incoming HTTP requests for /categories and /products
+- Validates request data (required fields, ID format)
+- Calls database functions
+- Returns JSON responses with appropriate HTTP status codes
+
+**`database/`** - Data layer
+- Defines data models (Category, Product)
+- Manages database schema (CREATE IF NOT EXISTS, indexes)
+- Implements CRUD queries for both entities
+- Includes comprehensive unit tests with test table isolation
+
+**`config/`** - Configuration layer
+- Loads configuration from `secrets.yml` (priority)
+- Falls back to environment variables
+- Falls back to hardcoded defaults
+- Supports multi-location path resolution (current directory and executable directory)
 
 ---
 
 ## Technical Details
 
-- **Storage:** In-memory HashMap (`map[int]Category`)
-- **Concurrency:** Thread-safe using `sync.RWMutex`
-- **ID Generation:** Auto-incrementing integer
-- **Time Complexity:** O(1) for all operations
+- **Backend:** Go 1.22+
+- **Database:** PostgreSQL 12+
+- **Storage:** Persistent PostgreSQL database
+- **Migrations:** Automatic table creation with `CREATE IF NOT EXISTS` and indexes
+- **Indexes:** Optimized indexes on `id` and `name` columns for fast lookups
+- **Relationships:** Foreign key constraints between products and categories
+- **Testing:** Go `testing` package with database test fixtures and isolated test tables
+- **Configuration:** YAML-based (`secrets.yml`) with environment variable fallback
+- **CI/CD:** GitHub Actions with PostgreSQL service and 30+ automated tests
+- **Time Complexity:** O(1) for indexed queries, O(n) for full table scans
 - **Deployment:** Railway (https://railway.app)
 
 ---
