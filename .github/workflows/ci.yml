@@ -60,8 +60,6 @@ jobs:
       - name: Build application
         run: |
           go build -o api-server main.go
-          # Copy secrets.yml to executable directory
-          cp secrets.yml .
 
       - name: Start server in background
         run: |
