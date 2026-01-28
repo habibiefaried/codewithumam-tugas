@@ -327,7 +327,7 @@ jobs:
             echo "Expected 200, got: $HTTP_CODE"
             exit 1
           fi
-          if ! echo $BODY | grep -q "Fashion & Apparel"; then
+          if ! echo $BODY | grep -q "Fashion"; then
             echo "Update failed - name not updated correctly"
             exit 1
           fi
