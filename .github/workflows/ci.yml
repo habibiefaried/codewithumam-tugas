@@ -241,6 +241,21 @@ jobs:
             exit 1
           fi
 
+          # Test foreign key constraint - try to delete category that has products
+          echo -e "\n\n15b. Test foreign key constraint: Delete category with products (should fail with 409)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE http://localhost:8080/categories/1)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" != "409" ]; then
+            echo "Expected 409 Conflict, got: $HTTP_CODE"
+            exit 1
+          fi
+          if ! echo $BODY | grep -q "Cannot delete category"; then
+            echo "Expected error message about constraint violation"
+            exit 1
+          fi
+
           # Test validation - empty name
           echo -e "\n\n16. Test validation: empty name (should fail)"
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/categories \
@@ -252,12 +267,79 @@ jobs:
             exit 1
           fi
           
+          # Test whitespace-only name
+          echo -e "\n\n16b. Test whitespace-only name (should fail)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/categories \
+            -H "Content-Type: application/json" \
+            -d '{"name":"   ","description":"Should fail"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" != "400" ]; then
+            echo "Expected 400 for whitespace, got: $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Test very long name (>255 chars)
+          echo -e "\n\n16c. Test very long name (should fail)"
+          LONG_NAME=$(printf 'a%.0s' {1..300})
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/categories \
+            -H "Content-Type: application/json" \
+            -d "{\"name\":\"$LONG_NAME\",\"description\":\"Should fail\"}")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" != "400" ]; then
+            echo "Expected 400 for long name, got: $HTTP_CODE"
+            exit 1
+          fi
+          
           # Test invalid ID
           echo -e "\n\n17. Test invalid ID (should fail)"
           RESPONSE=$(curl -s -w "\n%{http_code}" http://localhost:8080/categories/abc)
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           if [ "$HTTP_CODE" != "400" ]; then
             echo "Expected 400, got: $HTTP_CODE"
+            exit 1
+          fi
+
+          # Test negative product price
+          echo -e "\n\n17b. Test negative product price (should fail)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/products \
+            -H "Content-Type: application/json" \
+            -d '{"name":"BadProduct","price":-50,"stock":10,"category_id":1}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" != "400" ]; then
+            echo "Expected 400 for negative price, got: $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Test negative product stock
+          echo -e "\n\n17c. Test negative product stock (should fail)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/products \
+            -H "Content-Type: application/json" \
+            -d '{"name":"BadProduct","price":100,"stock":-5,"category_id":1}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" != "400" ]; then
+            echo "Expected 400 for negative stock, got: $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Test non-existent category
+          echo -e "\n\n17d. Test product with non-existent category (should fail)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/products \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Orphan","price":100,"stock":5,"category_id":9999}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" != "400" ]; then
+            echo "Expected 400 for invalid category, got: $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Test update product with non-existent category
+          echo -e "\n\n17e. Test update product with non-existent category (should fail)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT http://localhost:8080/products/1 \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Updated","price":299,"stock":10,"category_id":9999}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" != "400" ]; then
+            echo "Expected 400 for invalid category on update, got: $HTTP_CODE"
             exit 1
           fi
 
@@ -410,6 +492,121 @@ jobs:
           if [ "$HTTP_CODE" != "404" ]; then
             echo "Expected 404 for deleted product, got: $HTTP_CODE"
             exit 1
+          fi
+
+          # Edge Case Tests
+          echo -e "\n\n========================================="
+          echo "Running Edge Case Tests"
+          echo "========================================="
+          
+          # Test 31: Category with zero/empty price for product
+          echo -e "\n\n31. Edge Case: Create product with zero price (should fail)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/products \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Invalid Product","price":0,"stock":10,"category_id":1}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" = "201" ]; then
+            echo "Warning: Server accepted zero price product (should validate at API layer)"
+          fi
+          
+          # Test 32: Product with negative stock
+          echo -e "\n\n32. Edge Case: Create product with negative stock (should fail)"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/products \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Negative Stock","price":99,"stock":-5,"category_id":1}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" = "201" ]; then
+            echo "Warning: Server accepted negative stock (should validate at API layer)"
+          fi
+          
+          # Test 33: Product with non-existent category
+          echo -e "\n\n33. Edge Case: Create product with non-existent category ID"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/products \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Orphan Product","price":100,"stock":5,"category_id":9999}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" = "201" ]; then
+            echo "Warning: Server accepted product with non-existent category"
+          fi
+          
+          # Test 34: Category with whitespace-only name
+          echo -e "\n\n34. Edge Case: Create category with whitespace-only name"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/categories \
+            -H "Content-Type: application/json" \
+            -d '{"name":"   ","description":"Valid description"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" = "201" ]; then
+            echo "Note: Server created category with whitespace name (validation at API layer)"
+          fi
+          
+          # Test 35: Category with empty description
+          echo -e "\n\n35. Edge Case: Create category with empty description"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/categories \
+            -H "Content-Type: application/json" \
+            -d '{"name":"ValidName","description":""}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" = "201" ]; then
+            echo "Note: Server created category with empty description (should validate)"
+          fi
+          
+          # Test 36: Category name exceeding max length (255 chars)
+          echo -e "\n\n36. Edge Case: Create category with name > 255 characters"
+          LONG_NAME=$(python3 -c "print('a' * 256)")
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:8080/categories \
+            -H "Content-Type: application/json" \
+            -d "{\"name\":\"$LONG_NAME\",\"description\":\"Test\"}")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" = "201" ]; then
+            echo "Error: Server accepted name > 255 characters"
+            exit 1
+          fi
+          
+          # Test 37: Update product with invalid category ID
+          echo -e "\n\n37. Edge Case: Update product with non-existent category ID"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT http://localhost:8080/products/1 \
+            -H "Content-Type: application/json" \
+            -d '{"name":"Updated","price":200,"stock":5,"category_id":9999}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Note: Server accepted update with non-existent category (validation at API layer)"
+          fi
+          
+          # Test 38: Update category with whitespace name
+          echo -e "\n\n38. Edge Case: Update category with whitespace-only name"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT http://localhost:8080/categories/1 \
+            -H "Content-Type: application/json" \
+            -d '{"name":"   ","description":"Valid description"}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Note: Server accepted update with whitespace name (validation at API layer)"
+          fi
+          
+          # Test 39: Update category with empty description
+          echo -e "\n\n39. Edge Case: Update category with empty description"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT http://localhost:8080/categories/2 \
+            -H "Content-Type: application/json" \
+            -d '{"name":"ValidName","description":""}')
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo $BODY
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Note: Server accepted update with empty description (should validate)"
           fi
 
           echo -e "\n\n========================================="

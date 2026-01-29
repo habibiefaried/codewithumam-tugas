@@ -92,20 +92,6 @@ curl http://localhost:8080/health
 OK
 ```
 
-### Version
-```bash
-# Production
-curl https://codewithumam-tugas-production.up.railway.app/version
-
-# Local
-curl http://localhost:8080/version
-```
-
-**Response:**
-```
-Commit: unknown
-```
-
 ---
 
 ## Category Endpoints
@@ -541,7 +527,55 @@ The API returns appropriate HTTP status codes:
 - `204 No Content` - Resource deleted successfully
 - `400 Bad Request` - Invalid request (missing required fields, invalid ID format)
 - `404 Not Found` - Resource not found
+- `409 Conflict` - Resource conflict (e.g., deleting category with existing products)
 - `500 Internal Server Error` - Server error
+
+---
+
+## Edge Cases & Constraints
+
+### Foreign Key Constraint Protection
+**Issue:** Attempting to delete a category that has products referencing it.
+
+**Example:**
+```bash
+# Category 1 has products
+curl -X DELETE http://localhost:8080/categories/1
+# Response: 409 Conflict
+# Body: Cannot delete category that has products
+```
+
+**Why:** PostgreSQL enforces referential integrity. Products have a foreign key constraint pointing to categories. You must delete all products referencing a category before deleting the category itself.
+
+**Solution:**
+1. Delete all products with that category_id first
+2. Then delete the category
+
+```bash
+# 1. Find products for category 1
+curl http://localhost:8080/products | jq '.[] | select(.category_id == 1) | .id'
+
+# 2. Delete each product
+curl -X DELETE http://localhost:8080/products/1
+curl -X DELETE http://localhost:8080/products/2
+
+# 3. Now delete the category
+curl -X DELETE http://localhost:8080/categories/1  # 204 No Content
+```
+
+### Input Validation
+- **Empty name:** Returns 400 Bad Request
+- **Invalid ID format:** Returns 400 Bad Request (e.g., `/categories/abc`)
+- **Non-existent ID:** Returns 404 Not Found
+- **Missing required fields:** Returns 400 Bad Request
+
+### JSON Encoding
+Special characters in names/descriptions are JSON-encoded. For example:
+- `&` becomes `\u0026`
+- `<` becomes `\u003c`
+- `>` becomes `\u003e`
+
+This is normal JSON encoding and doesn't affect functionality.
 
 ---
 

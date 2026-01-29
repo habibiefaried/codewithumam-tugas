@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"codewithumam-tugas1/database"
 )
@@ -67,8 +68,33 @@ func (p *Products) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Trim whitespace
+	req.Name = strings.TrimSpace(req.Name)
+
+	// Validate name
 	if req.Name == "" {
 		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.Name) > maxNameLength {
+		http.Error(w, "Name must be 255 characters or less", http.StatusBadRequest)
+		return
+	}
+
+	// Validate price and stock
+	if req.Price <= 0 {
+		http.Error(w, "Price must be greater than 0", http.StatusBadRequest)
+		return
+	}
+	if req.Stock < 0 {
+		http.Error(w, "Stock cannot be negative", http.StatusBadRequest)
+		return
+	}
+
+	// Validate category exists
+	_, err := database.GetByID(p.db, "category", req.CategoryID)
+	if err != nil {
+		http.Error(w, "Category does not exist", http.StatusBadRequest)
 		return
 	}
 
@@ -104,8 +130,33 @@ func (p *Products) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Trim whitespace
+	req.Name = strings.TrimSpace(req.Name)
+
+	// Validate name
 	if req.Name == "" {
 		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.Name) > maxNameLength {
+		http.Error(w, "Name must be 255 characters or less", http.StatusBadRequest)
+		return
+	}
+
+	// Validate price and stock
+	if req.Price <= 0 {
+		http.Error(w, "Price must be greater than 0", http.StatusBadRequest)
+		return
+	}
+	if req.Stock < 0 {
+		http.Error(w, "Stock cannot be negative", http.StatusBadRequest)
+		return
+	}
+
+	// Validate category exists
+	_, err = database.GetByID(p.db, "category", req.CategoryID)
+	if err != nil {
+		http.Error(w, "Category does not exist", http.StatusBadRequest)
 		return
 	}
 
@@ -130,7 +181,13 @@ func (p *Products) Delete(w http.ResponseWriter, r *http.Request) {
 
 	err = database.DeleteProduct(p.db, p.tableName, id)
 	if err != nil {
-		http.Error(w, "Product not found", http.StatusNotFound)
+		// Check if it's a "not found" error or another database error
+		if err.Error() == "product not found" {
+			http.Error(w, "Product not found", http.StatusNotFound)
+		} else {
+			// Other database error (constraint violation, etc)
+			http.Error(w, "Failed to delete product", http.StatusConflict)
+		}
 		return
 	}
 
