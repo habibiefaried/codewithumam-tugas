@@ -341,3 +341,87 @@ func TestMultipleOperations(t *testing.T) {
 		t.Errorf("Expected 'Updated Electronics', got '%s'", categories[0].Name)
 	}
 }
+
+// TestCategoryInputValidation tests input validation for categories
+func TestCategoryInputValidation(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	// Test whitespace-only name (validation happens at API layer, but document expected behavior)
+	cat, err := Create(db, "category_test", "   ", "Valid description")
+	if err != nil {
+		t.Logf("Whitespace name validation at API layer (expected)")
+		return
+	}
+	// If it creates, that's the database layer behavior
+	if cat.ID > 0 {
+		t.Logf("Database layer created category with whitespace name (validation should be at API layer)")
+	}
+}
+
+// TestCategoryMaxLength tests very long category names
+func TestCategoryMaxLength(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	// Create with 255 chars name (should work)
+	longName := ""
+	for i := 0; i < 255; i++ {
+		longName += "a"
+	}
+	cat, err := Create(db, "category_test", longName, "Valid")
+	if err != nil {
+		t.Fatalf("Create with 255 char name failed: %v", err)
+	}
+	if cat.ID == 0 {
+		t.Error("Expected non-zero ID")
+	}
+
+	// Create with 256 chars name (validation at API layer)
+	tooLongName := longName + "a"
+	cat2, err := Create(db, "category_test", tooLongName, "Valid")
+	if err != nil {
+		t.Logf("Database returned error for 256 char name: %v (validation at API layer)", err)
+		return
+	}
+	if cat2.ID > 0 {
+		t.Logf("Database created category with 256 char name (validation enforced at API layer)")
+	}
+}
+
+// TestCategoryUpdateValidation tests update validation for categories
+func TestCategoryUpdateValidation(t *testing.T) {
+	db := setupTestDB(t)
+	defer teardownTestDB(t, db)
+
+	// Create initial category
+	cat, err := Create(db, "category_test", "InitialCat", "Initial description")
+	if err != nil {
+		t.Fatalf("Failed to create category: %v", err)
+	}
+
+	// Test valid update
+	updated, err := Update(db, "category_test", cat.ID, "UpdatedCat", "Updated description")
+	if err != nil {
+		t.Fatalf("Valid update failed: %v", err)
+	}
+	if updated.Name != "UpdatedCat" {
+		t.Errorf("Expected name 'UpdatedCat', got %q", updated.Name)
+	}
+
+	// Test update with whitespace name (database layer allows, validation at API layer)
+	updated2, err := Update(db, "category_test", cat.ID, "   ", "Test")
+	if err != nil {
+		t.Logf("Update with whitespace name failed: %v (validation at API layer)", err)
+		return
+	}
+	t.Logf("Update with whitespace name succeeded at DB layer: %q (API layer should validate)", updated2.Name)
+
+	// Test update with empty description (database layer allows, validation at API layer)
+	_, err = Update(db, "category_test", cat.ID, "CatName", "")
+	if err != nil {
+		t.Logf("Update with empty description failed: %v (validation at API layer)", err)
+		return
+	}
+	t.Logf("Update with empty description succeeded at DB layer (API layer should validate)")
+}

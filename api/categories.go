@@ -5,8 +5,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"codewithumam-tugas1/database"
+)
+
+const (
+	maxNameLength        = 255
+	maxDescriptionLength = 5000
 )
 
 // Categories manages HTTP requests for categories
@@ -69,8 +75,21 @@ func (c *Categories) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Trim whitespace
+	req.Name = strings.TrimSpace(req.Name)
+	req.Description = strings.TrimSpace(req.Description)
+
+	// Validate name
 	if req.Name == "" {
 		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.Name) > maxNameLength {
+		http.Error(w, "Name must be 255 characters or less", http.StatusBadRequest)
+		return
+	}
+	if len(req.Description) > maxDescriptionLength {
+		http.Error(w, "Description must be 5000 characters or less", http.StatusBadRequest)
 		return
 	}
 
@@ -104,8 +123,21 @@ func (c *Categories) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Trim whitespace
+	req.Name = strings.TrimSpace(req.Name)
+	req.Description = strings.TrimSpace(req.Description)
+
+	// Validate name
 	if req.Name == "" {
 		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+	if len(req.Name) > maxNameLength {
+		http.Error(w, "Name must be 255 characters or less", http.StatusBadRequest)
+		return
+	}
+	if len(req.Description) > maxDescriptionLength {
+		http.Error(w, "Description must be 5000 characters or less", http.StatusBadRequest)
 		return
 	}
 
