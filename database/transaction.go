@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -66,10 +67,18 @@ func Checkout(db *sql.DB, productTable, categoryTable, transactionTable, transac
 	getProductQuery := fmt.Sprintf("SELECT p.id, p.name, p.price, p.stock, COALESCE(c.description, '') FROM %s p LEFT JOIN %s c ON p.category_id = c.id WHERE p.id = $1 FOR UPDATE", productTable, categoryTable)
 	updateStockQuery := fmt.Sprintf("UPDATE %s SET stock = $1 WHERE id = $2", productTable)
 
+	// Sort items by product_id to prevent deadlocks when multiple transactions
+	// try to lock products in different orders
+	sortedItems := make([]CheckoutItem, len(items))
+	copy(sortedItems, items)
+	sort.Slice(sortedItems, func(i, j int) bool {
+		return sortedItems[i].ProductID < sortedItems[j].ProductID
+	})
+
 	var details []TransactionDetail
 	totalAmount := 0
 
-	for _, item := range items {
+	for _, item := range sortedItems {
 		if item.ProductID <= 0 || item.Quantity <= 0 {
 			rollback()
 			return Transaction{}, ErrInvalidCheckoutItem
