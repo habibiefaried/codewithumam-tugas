@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"codewithumam-tugas1/database"
@@ -51,7 +52,7 @@ func (c *Checkout) Create(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Insufficient stock", http.StatusBadRequest)
 			return
 		default:
-			http.Error(w, "Failed to checkout", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("Failed to checkout: %v", err), http.StatusInternalServerError)
 			return
 		}
 	}
